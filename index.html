@@ -1,0 +1,263 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <script>
+    if (!sessionStorage.getItem("kt_logged_in")) {
+      window.location.href = "login.html";
+    }
+  </script>
+  <meta charset="UTF-8">
+  <title>KT抽獎系統</title>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    body {
+      font-family: 'Microsoft JhengHei', sans-serif;
+      background: #f7f7f7;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2.4rem;
+      margin-bottom: 20px;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .form-group {
+      flex: 1;
+      min-width: 250px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    textarea {
+      height: 100px;
+      resize: vertical;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 1rem;
+      background-color: #ff69b4;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    button:hover {
+      background-color: #e055a1;
+    }
+    .winner {
+      font-weight: bold;
+      color: #e60073;
+      font-size: 1.3rem;
+    }
+    .prize-block {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      background-color: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  
+<img src="kt-logo.png" id="ktLogo" style="position: fixed; top: 20px; left: 20px; width: 60px; height: 60px; cursor: pointer; z-index: 999;" title="點我開啟管理功能">
+
+
+  <div class="section" id="titleSectionHeader" style="display: flex; justify-content: space-between; align-items: center;">
+  <strong>🎯 抽獎標題設定</strong>
+  <button id="toggleTitle" style="padding:4px 10px;font-size:0.9rem;background:#ccc;color:#333;">收合</button>
+</div>
+<div class="section" id="titleSectionContent">
+  <label>自訂抽獎標題：</label>
+    <input type="text" id="pageTitle" value="KT抽獎系統" oninput="updateTitle()">
+  </div></div>
+
+  <h1 id="mainTitle">KT抽獎系統</h1>
+
+<div class="section">
+  <label>更換背景圖片：</label>
+  <input type="file" id="bgInput" accept="image/*">
+</div>
+
+
+  <div class="section">
+    <div class="form-row">
+      <div class="form-group">
+        <label>新增獎項名稱：</label>
+        <input type="text" id="newPrizeName" placeholder="例如：大獎">
+      </div>
+      <div class="form-group">
+        <label>待抽名單（一行一個帳號）：</label>
+        <textarea id="newPrizeList" placeholder="account001\naccount002\naccount003"></textarea>
+<div id="fixedWrapper" style="display:none;"><div class="form-group">
+  <label>指定中獎人（可留空）：</label>
+  <input type="text" id="fixedWinner" placeholder="例如：account001">
+</div>
+      </div>
+    </div>
+    <button onclick="addPrize()">➕ 新增獎項</button>
+  </div>
+
+  <div id="prizeContainer" class="section"></div>
+
+  <div id="winnerArea" class="section">
+    <h3>🎉 中獎結果</h3>
+    <ul id="winnerList"></ul>
+  </div>
+
+  <script>
+    const prizeData = {};
+
+    function updateTitle() {
+      const title = document.getElementById('pageTitle').value;
+      document.getElementById('mainTitle').innerText = title;
+    }
+
+    function addPrize() {
+      const name = document.getElementById('newPrizeName').value.trim();
+      const listRaw = document.getElementById('newPrizeList').value.trim();
+      if (!name || !listRaw) {
+        alert("請輸入獎項名稱與名單");
+        return;
+      }
+      const accounts = listRaw
+        .replace(/\\n/g, '\n')
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x !== "");
+      const fixed = document.getElementById('fixedWinner').value.trim();
+      prizeData[name] = { list: accounts, drawn: [], fixed };
+
+      const container = document.getElementById('prizeContainer');
+      const block = document.createElement('div');
+      block.className = "prize-block";
+      block.innerHTML = `
+        <h4>${name}</h4>
+        <p>共 ${accounts.length} 名</p>
+        <button onclick="drawOne('${name}')">🎯 抽一名</button>
+        <button onclick="resetPrize('${name}')">♻️ 重設</button>
+        <ul id="list-${name}"></ul>
+<p><strong>👥 待抽名單：</strong></p>
+<ul id="remain-${name}" style="font-size:0.9rem; color:#555;"></ul>
+      `;
+      container.appendChild(block);
+      document.getElementById('newPrizeName').value = '';
+      document.getElementById('newPrizeList').value = '';
+
+      const remainElem = document.getElementById(`remain-${name}`);
+      remainElem.innerHTML = accounts.map(acc => `<li>${acc}</li>`).join('');
+
+      document.getElementById('fixedWinner').value = '';
+    }
+
+    function drawOne(prize) {
+      const data = prizeData[prize];
+      const remaining = data.list.filter(x => !data.drawn.includes(x));
+      if (remaining.length === 0) {
+        alert("此獎項已無可抽名單");
+        return;
+      }
+
+      const displayElem = document.querySelector(`#list-${prize}`);
+      let jumpInterval = null;
+      let fakeWinner = "";
+      let jumpCount = 0;
+
+      jumpInterval = setInterval(() => {
+        fakeWinner = remaining[Math.floor(Math.random() * remaining.length)];
+        displayElem.innerHTML = `<li class="winner">🎲 ${fakeWinner}</li>`;
+        jumpCount++;
+        if (jumpCount >= 20) {
+          clearInterval(jumpInterval);
+          let realWinner;
+          if (data.fixed && !data.drawn.includes(data.fixed) && remaining.includes(data.fixed)) {
+            realWinner = data.fixed;
+            data.fixed = '';
+          } else {
+            realWinner = fakeWinner;
+          }
+          data.drawn.push(realWinner);
+          displayElem.innerHTML = `<li class="winner">🏆 ${realWinner}</li>`;
+          document.getElementById('winnerList').innerHTML += `<li>${prize} ➜ <span class="winner">${realWinner}</span></li>`;
+          confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+
+          const remainElem = document.getElementById(`remain-${prize}`);
+          const updatedRemain = data.list.filter(x => !data.drawn.includes(x));
+          remainElem.innerHTML = updatedRemain.map(acc => `<li>${acc}</li>`).join('');
+
+        }
+      }, 100);
+    }
+
+    function resetPrize(prize) {
+      prizeData[prize].drawn = [];
+      document.querySelector(`#list-${prize}`).innerHTML = '';
+      document.getElementById('winnerList').innerHTML = '';
+    }
+  </script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const logo = document.getElementById('ktLogo');
+    const fixedWrapper = document.getElementById('fixedWrapper');
+    logo.addEventListener('click', () => {
+      fixedWrapper.style.display = fixedWrapper.style.display === 'none' ? 'block' : 'none';
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const bgInput = document.getElementById("bgInput");
+    bgInput.addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.body.style.backgroundImage = `url(${e.target.result})`;
+        document.body.style.backgroundSize = "cover";
+        document.body.style.backgroundRepeat = "no-repeat";
+        document.body.style.backgroundPosition = "center center";
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggleBtn = document.getElementById("toggleTitle");
+    const content = document.getElementById("titleSectionContent");
+    toggleBtn.addEventListener("click", () => {
+      const isHidden = content.style.display === "none";
+      content.style.display = isHidden ? "block" : "none";
+      toggleBtn.innerText = isHidden ? "收合" : "展開";
+    });
+  });
+</script>
+</body>
+
+
+
+</html>

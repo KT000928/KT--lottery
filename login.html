@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>KT 抽獎系統 - 登入</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      text-align: center;
+    }
+    .logo {
+      width: 150px;
+      margin-bottom: 30px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+    input {
+      padding: 10px;
+      margin: 10px;
+      width: 200px;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: none;
+    }
+    button {
+      padding: 10px 20px;
+      background: hotpink;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 0 10px hotpink;
+    }
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <img src="kt-logo.png" class="logo" />
+    <h1>AUTHENTICATION REQUIRED</h1>
+    <input type="text" id="account" placeholder="帳號"><br>
+    <input type="password" id="password" placeholder="密碼"><br>
+    <button onclick="login()">登入</button>
+    <div class="error" id="errorMsg"></div>
+  </div>
+  <script src="login.js"></script>
+</body>
+</html>
